@@ -1,60 +1,256 @@
 #include <iostream>
-#include <sstream>
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
+#include <string>
 #include <fstream>
+#include <sstream>
 #include <dirent.h>
-#include <string.h>
 #include "handler.hh"
 
-File_info::File_info() {}
 
-void File_info::setDiameter(std::string diameter)
-{
-	diameter_ = diameter;
+Handler::Handler(): begin_index(0), end_index(10) { 
+	fileUpdate = new FileUpdate();
 }
-std::string File_info::getDiameter() const
+void Handler::grid_previous()
 {
-	return diameter_;
+	if (begin_index != 0)
+	{	
+		gtk_list_store_clear(grid_informations);
+		end_index = end_index - 10;
+		begin_index = begin_index - 10;
+		if (begin_index < 0)
+		{
+			begin_index = 0;
+		}
+		populate_grid();
+	}
 }
-void File_info::setToolName(std::string tool_name)
+void Handler::grid_next()
 {
-	tool_name_ = tool_name;
+	if (end_index < informations.size()) {
+		gtk_list_store_clear(grid_informations);
+		end_index = end_index + 10;
+		begin_index = begin_index + 10;
+		if (end_index == informations.size())
+		{
+			end_index = informations.size();
+		}
+		populate_grid();
+	}
 }
-std::string File_info::getToolName() const {
-	return tool_name_;
-}
-void File_info::setDate(std::string date)
+void Handler::call_grid_previous(GtkWidget* widget, gpointer data)
 {
-	date_ = date;
+	auto h = (Handler*) data;
+	h->grid_previous();
 }
-std::string File_info::getDate() const 
+void Handler::call_grid_next(GtkWidget* widget, gpointer data)
 {
-	return date_;
+	auto h = (Handler*) data;
+	h->grid_next();
 }
-void File_info::setTime(std::string time)
+void Handler::replace(GtkWidget* widget)
 {
-	time_ = time;
+	bool fileValid = fileUpdate->run_dialog_file(widget);
+	if (!fileValid)
+	{
+		notifications = gtk_message_dialog_new(GTK_WINDOW(window),
+			GTK_DIALOG_DESTROY_WITH_PARENT,
+			GTK_MESSAGE_ERROR,
+			GTK_BUTTONS_CLOSE,
+			"File extension must be a .tap file");
+		gtk_dialog_run(GTK_DIALOG(notifications));
+		gtk_widget_destroy(notifications);	
+	}
+	else
+	{
+		bool replace = fileUpdate->run_dialog_values(window);
+		if (replace)
+		{
+			fileUpdate->replace();
+		}
+	}
 }
-std::string File_info::getTime() const
+void call_replace(GtkWidget* widget, gpointer data)
 {
-	return time_;
+	auto h = (Handler*) data;
+	h->replace(widget);
 }
-void File_info::setName(std::string name)
+void Handler::inject(GtkWidget* widget)
 {
-	name_ = name;
+
 }
-std::string File_info::getName() const
+void call_injection(GtkWidget* widget, gpointer data)
 {
-	return name_;
+	auto h = (Handler*) data;
+	h->inject(widget);
 }
-void File_info::setFileName(std::string filename)
+void Handler::init_previous_button()
 {
-	filename_ = filename;
+	button_previous = gtk_button_new_with_label("previous");
+	g_signal_connect(G_OBJECT(button_previous), "clicked", G_CALLBACK(call_grid_previous), this);
+	gtk_table_attach_defaults(GTK_TABLE(Table), button_previous, 2,3,6,7);
 }
-std::string File_info::getFileName()
+void Handler::init_next_button()
 {
-	return filename_;
+	button_next = gtk_button_new_with_label("next");
+	g_signal_connect(G_OBJECT(button_next), "clicked", G_CALLBACK(call_grid_next),
+			this);
+	gtk_table_attach_defaults(GTK_TABLE(Table), button_next, 7,8, 6,7);
+}
+void Handler::init_button_replace()
+{
+	button_replace = gtk_button_new_with_label("replace");
+	g_signal_connect(G_OBJECT(button_replace), "clicked", G_CALLBACK(call_replace),
+			this);
+	gtk_table_attach_defaults(GTK_TABLE(Table), button_replace, 2, 8,  7, 8);
+}
+void Handler::init_button_injection()
+{
+	button_injection = gtk_button_new_with_label("inject");
+	g_signal_connect(G_OBJECT(button_injection), "clicked", G_CALLBACK(call_injection),
+			this);
+	gtk_table_attach_defaults(GTK_TABLE(Table), button_injection, 2,8, 8, 9);
+}
+void Handler::init_window(const char* dir_name)
+{
+	gtk_init(0, NULL);
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_container_set_border_width(GTK_CONTAINER(window), 5);
+	gtk_window_set_default_size(GTK_WINDOW(window), 1400, 1400);
+	gtk_window_set_title(GTK_WINDOW(window), std::string(dir_name).append(std::string(" : FILE INFORMATIONS")).c_str());
+	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+
+	gtk_window_maximize(GTK_WINDOW(window));
+	gtk_window_set_gravity(GTK_WINDOW(window), GDK_GRAVITY_CENTER);
+	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+}
+void Handler::init_table()
+{
+	Table = gtk_table_new(10,10, TRUE);
+	gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(Table));
+}
+std::string Handler::file_name(std::string filename)
+{
+	std::string res;
+	if (path_.find('/') == std::string::npos)
+	{
+		res= filename.substr(path_.length() + 1, filename.length());
+	}
+	else
+	{
+		res = filename.substr(path_.length(), filename.length());
+	}
+	return res;
+}
+void Handler::populate_grid()
+{
+	for (size_t i = 0 + begin_index; i < (end_index < informations.size() ? end_index : informations.size()); i++)
+	{
+		std::string name = file_name(informations[i]->getFileName());
+		gtk_list_store_insert_with_values(grid_informations, NULL, -1,
+				FILE_NUMBER, i + 1, FILE_NAME, name.c_str() , TOOL_NAME, informations[i]->getToolName().c_str(),  FILE_TIME,
+				informations[i]->getTime().c_str(), RUN_TIME, informations[i]->getRunTime().c_str(), -1);
+	}
+
+}
+void Handler::init_grid()
+{
+	grid_informations = gtk_list_store_new(NB_COLUMNS, 
+			G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING); 
+	
+	/* insert stocked value in the grid display */
+	populate_grid();
+	
+	/* create the grid view using the model as reference */
+	view_informations = gtk_tree_view_new_with_model(GTK_TREE_MODEL(grid_informations));
+	g_object_unref(grid_informations);
+
+	/* init the grid column file number */
+	column = gtk_tree_view_column_new_with_attributes("File number", gtk_cell_renderer_text_new(),
+			"text", FILE_NUMBER, NULL);
+	gtk_tree_view_column_set_expand(column, TRUE);
+	
+	/* add the column to the grid view */
+	gtk_tree_view_append_column(GTK_TREE_VIEW(view_informations), column);
+
+	column = gtk_tree_view_column_new_with_attributes("NAME", gtk_cell_renderer_text_new(),
+			"text", FILE_NAME, NULL);
+	
+	gtk_tree_view_column_set_expand(column, TRUE);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(view_informations), column);
+
+	column = gtk_tree_view_column_new_with_attributes("TOOL NAME", gtk_cell_renderer_text_new(),
+			"text", TOOL_NAME, NULL);
+	
+	gtk_tree_view_column_set_expand(column, TRUE);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(view_informations), column);
+	
+	column = gtk_tree_view_column_new_with_attributes("TIME", gtk_cell_renderer_text_new(),
+			"text", FILE_TIME, NULL);
+	gtk_tree_view_column_set_expand(column, TRUE);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(view_informations), column);
+
+	
+	column = gtk_tree_view_column_new_with_attributes("RUN TIME", gtk_cell_renderer_text_new(),
+			"text", RUN_TIME, NULL);
+	gtk_tree_view_column_set_expand(column, TRUE);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(view_informations), column);
+	gtk_widget_set_size_request(view_informations, 1000, 600);
+	
+	/* add the grid to the major window display */
+	gtk_table_attach_defaults(GTK_TABLE(Table), view_informations, 2,8, 2,5);
+}
+void Handler::run()
+{
+	gtk_widget_show_all(window);
+	gtk_main();
+}
+void Handler::setBeginIndex(int index)
+{
+	begin_index = index;
+}
+int Handler::getBeginIndex()
+{
+	return begin_index;
+}
+void Handler::setEndIndex(int index)
+{
+	end_index = index;
+}
+int Handler::getEndIndex()
+{
+	return end_index;
+}
+int Handler::getSizeInformations()
+{
+	return informations.size();
+}
+std::string retrieve_run_time(std::string line, std::string field)
+{
+	std::string token;
+	std::string result;
+	std::string previous = "";
+	std::istringstream iss(line);
+	while (iss >> token)
+	{
+		if(strcmp(previous.c_str(), field.c_str()) == 0)
+		{
+			previous = token;
+			iss >> token;
+			if (strcmp(previous.c_str(), ":") == 0)
+			{
+				while (strcmp(token.c_str(), ")") != 0)
+				{
+					result.append(token);
+					iss >> token;
+				}
+			}
+			return result;
+		}
+		previous = token;
+	}
+	return "";
 }
 std::string retrieve_info(std::string line, std::string field, int format)
 {
@@ -104,6 +300,7 @@ void File_info::print_informations_file()
 	std::cout << "TOOL NAME : " << tool_name_ << std::endl;
 	std::cout << "TOOL DIA : " << diameter_ << std::endl;
 	std::cout << "TOOL TIME : " << time_ << std::endl;
+	std::cout << "RUN TIME : " << run_time_ << std::endl;
 	std::cout << "" << std::endl;
 }
 bool find_name_format(std::string line) {
@@ -112,6 +309,10 @@ bool find_name_format(std::string line) {
 bool find_tool_name(std::string line)
 {
 	return line.find("TOOL") != std::string::npos && line.find("NAME") != std::string::npos;
+}
+bool find_tool_run_time(std::string line)
+{
+	return line.find("GC") != std::string::npos;
 }
 int find_time_format(std::string line)
 {
@@ -148,7 +349,8 @@ std::string retrieve_time_format_two(std::string content)
 	std::string result = content.substr(pos + token.length()); 
 	return result;
 }
-File_info*  process_file_content(char* filename)
+
+File_info* Handler::process_file_content(char* filename)
 {
 	auto info = new File_info();
 	std::fstream file;
@@ -191,14 +393,25 @@ File_info*  process_file_content(char* filename)
 				std::string time = retrieve_info(line, found_time == 1 ? "TIME" : "TIME:", found_time);
 				info->setTime(time);
 			}
+			if (find_tool_run_time(line))
+			{
+				std::string run_time = retrieve_run_time(line, "GC");
+				info->setRunTime(run_time);
+			}
 		}
 	}
 	file.close();
 	return info;
 
+
 }
-void read_directory_files(const char* path)
+void Handler::setPath(std::string path)
 {
+	path_ = path;
+}
+void Handler::read_directory(const char* path)
+{
+
 	DIR* directory = opendir(path);
 	if (directory == NULL)
 	{
@@ -211,31 +424,25 @@ void read_directory_files(const char* path)
 		{
 			char d_path[400];
 			char* buffer = dir->d_name;
-			sprintf(d_path, "%s/%s", path, buffer);
-			auto info = process_file_content(d_path);
-			info->print_informations_file();
+			sprintf(d_path, "%s/%s",path, buffer);
+			std::string::size_type index;
+			std::string filename(d_path);
+			index = filename.rfind('.');
+			if (index != std::string::npos)
+			{
+				std::string extension = filename.substr(index + 1);
+				if (strcmp(extension.c_str(), "tap") == 0)
+				{
+					auto info = process_file_content(d_path);
+					informations.push_back(info);
+				}
+			}
 		}
 		else if (dir->d_type == DT_DIR && strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
-			char d_path[400];
+			char d_path[400];	
 			sprintf(d_path, "%s/%s", path, dir->d_name);
-			read_directory_files(d_path);
+			read_directory(d_path);
 		}
 	}
 	closedir(directory);
-
-}
-int main(int argc, char* argv[])
-{
-	if (argc >= 2) {
-
-		for (int i = 1; i < argc; i++)
-		{
-			std::string dir_name = argv[i];
-			if (dir_name.find('/') != std::string::npos) {
-				int index_ = dir_name.find('/');
-				dir_name[index_] = '\0';
-			}
-			read_directory_files(dir_name.c_str());
-		}
-	}
 }

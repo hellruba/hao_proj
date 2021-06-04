@@ -1,36 +1,68 @@
 #pragma once
-#include <string.h>
-
-class File_info {
+#include <vector>
+#include "file_info.hh"
+#include "file_update.hh"
+#include <gtk/gtk.h>
+class Handler {
 
 	public:
-		File_info();
-		~File_info() = default;
-	void setFileName(std::string filename);
-	std::string getFileName();
+		Handler();
+		~Handler() = default;
+		void init_window(const char* dir_name);
+		void init_grid();
+		void populate_grid();
+		void init_table();
+		void init_next_button();
+		void init_previous_button();
+		void init_button_replace();
+		void init_button_injection();
+		void run();
+		void grid_previous();
+		void grid_next();
+		static void call_grid_previous(GtkWidget *widget, gpointer data);
+		static void call_grid_next(GtkWidget* widget, gpointer data);
+		void replace(GtkWidget* widget);
+		void inject(GtkWidget* widget);
+		void read_directory(const char* path);
+		File_info* process_file_content(char* filename);
 
-	void setName(std::string name);
-	std::string getName() const;
+		void setBeginIndex(int index);
+		int getBeginIndex();
 
-	void setDiameter(std::string diameter);
-	std::string getDiameter() const;	
-	void print_informations_file();
-	
-	void setDate(std::string date);
-	std::string getDate() const;
+		void setEndIndex(int index);
+		int getEndIndex();
 
-	void setTime(std::string time);
-	std::string getTime() const;
+		void setPath(std::string path);
+		std::string file_name(std::string filename);
+		int getSizeInformations();
 
-	void setToolName(std::string tool_name);
-	std::string getToolName() const;
+		enum {
+			FILE_NUMBER,
+			FILE_NAME,
+			TOOL_NAME,
+			FILE_TIME,
+			RUN_TIME,
+			NB_COLUMNS
+		};
+
 	private:
-		std::string filename_;
-		std::string name_;
-		std::string diameter_;
-		std::string tool_name_;
-		std::string date_;
-		std::string time_;
+		GtkWidget* window;
+		GtkWidget* Table;
+		GtkWidget* button_next;
+		GtkWidget* button_previous;
+		GtkWidget* button_replace;
+		GtkWidget* button_injection;
+		GtkWidget* view_informations;
+		GtkWidget* notifications;
+		GtkWidget* textZone;
+
+		GtkTreeViewColumn* column;
+		GtkListStore* grid_informations;
+		
+		FileUpdate* fileUpdate;
+		int begin_index;
+		int end_index;
+		std::string path_;
+		std::vector<File_info*> informations;
+
 };
-void read_directory(const char* path);
-File_info* process_file_content(char* filename);
