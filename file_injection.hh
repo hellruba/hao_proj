@@ -11,7 +11,13 @@ class FileInjection
 		FileInjection();
 		~FileInjection() = default;
 	private:
+		GtkWidget* dialog;
+		GtkWidget* entry;
+		GtkWidget* textZone;
 		std::vector<std::pair<std::pair<std::string, std::string>, std::string>> injections;
-		bool
+		bool newCoords;
+		std::string coordX;
+		std::string coordY;
+		std::string text;
 
 };

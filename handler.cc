@@ -12,6 +12,152 @@
 Handler::Handler(): begin_index(0), end_index(10) { 
 	fileUpdate = new FileUpdate();
 }
+
+void Handler::quit_window()
+{
+	notifications = gtk_message_dialog_new(GTK_WINDOW(window),
+			GTK_DIALOG_MODAL,
+			GTK_MESSAGE_QUESTION,
+			GTK_BUTTONS_YES_NO,
+			"Are you sure u want to exit?");
+	switch(gtk_dialog_run(GTK_DIALOG(notifications)))
+	{
+		case GTK_RESPONSE_YES:
+			gtk_widget_destroy(window);
+			gtk_main_quit();
+			break;
+		case GTK_RESPONSE_NO:
+			gtk_widget_destroy(notifications);
+			break;
+	}
+
+}
+void Handler::reset_grid()
+{
+	gtk_list_store_clear(grid_informations);
+	informations.clear();
+	begin_index = 0;
+	end_index = 10;
+}
+void Handler::open_file()
+{
+	file_dialog = gtk_file_chooser_dialog_new("Open a dir", NULL,
+			GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
+			GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+			GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
+			NULL);
+	bool dir_selected = true;
+	switch (gtk_dialog_run(GTK_DIALOG(file_dialog)))
+	{
+		case GTK_RESPONSE_ACCEPT:
+			dir_name_ = std::string(gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(file_dialog)));
+			path_ = dir_name_;
+			break;
+		case GTK_RESPONSE_CANCEL:
+		default:
+			dir_selected = false;
+			break;
+	}
+	gtk_widget_destroy(file_dialog);
+	if (dir_selected)
+	{
+		notifications = gtk_message_dialog_new(GTK_WINDOW(window),
+				GTK_DIALOG_MODAL,
+				GTK_MESSAGE_QUESTION,
+				GTK_BUTTONS_YES_NO,
+				"Do you want to work on sub folders as well?");
+		switch(gtk_dialog_run(GTK_DIALOG(notifications)))
+		{
+			case GTK_RESPONSE_YES:
+				work_on_sub_folder = true;
+
+				gtk_widget_destroy(notifications);
+				break;
+			case GTK_RESPONSE_NO:
+				work_on_sub_folder = false;
+
+				gtk_widget_destroy(notifications);
+				break;
+		}
+		reset_grid();
+		read_directory(dir_name_.c_str());
+		populate_grid();
+	}
+}
+void call_quit_window(GtkWidget* widget, gpointer data)
+{
+	auto h = (Handler*) data;
+	h->quit_window();
+}
+void call_open(GtkWidget* widget, gpointer data)
+{
+	auto h = (Handler*) data;
+	h->open_file();
+}
+void Handler::setDirName(std::string dir_name)
+{
+	dir_name_ = dir_name;
+}
+std::string Handler::getDirName() const
+{
+	return dir_name_;
+}
+void call_injection(GtkWidget* widget, gpointer data)
+{
+	auto h = (Handler*) data;
+	h->inject(widget);
+}
+void call_replace(GtkWidget* widget, gpointer data)
+{
+	auto h = (Handler*) data;
+	h->replace(widget);
+}
+void Handler::init_edit_menu()
+{
+	EditMenu = gtk_image_menu_item_new_with_label("replace");
+	g_signal_connect(G_OBJECT(EditMenu), "activate",
+			G_CALLBACK(call_replace), this);
+	gtk_menu_shell_append(GTK_MENU_SHELL(Menu), EditMenu);
+
+	EditMenu = gtk_image_menu_item_new_with_label("insert lines");
+	g_signal_connect(G_OBJECT(EditMenu), "activate",
+			G_CALLBACK(call_injection), this);
+	gtk_menu_shell_append(GTK_MENU_SHELL(Menu), EditMenu);
+
+	EditMenu = gtk_image_menu_item_new_with_label("Edit");
+	gtk_menu_item_set_submenu(GTK_MENU_ITEM(EditMenu), Menu);
+	gtk_menu_shell_append(GTK_MENU_SHELL(MenuBar), EditMenu);
+}
+void Handler::init_file_menu()
+{
+
+	FileMenu = gtk_image_menu_item_new_with_label("open");
+	g_signal_connect(G_OBJECT(FileMenu), "activate",
+			G_CALLBACK(call_open), this);
+	gtk_menu_shell_append(GTK_MENU_SHELL(Menu), FileMenu);
+
+	FileMenu = gtk_image_menu_item_new_with_label("quit");
+	g_signal_connect(G_OBJECT(FileMenu), "activate",
+			G_CALLBACK(call_quit_window), this);
+	gtk_menu_shell_append(GTK_MENU_SHELL(Menu), FileMenu);
+
+
+	FileMenu = gtk_image_menu_item_new_with_label("File");
+	gtk_menu_item_set_submenu(GTK_MENU_ITEM(FileMenu), Menu);
+	gtk_menu_shell_append(GTK_MENU_SHELL(MenuBar), FileMenu);
+
+}
+void Handler::init_menu()
+{
+	MenuBox = gtk_vbox_new(FALSE, 0);
+	MenuBar = gtk_menu_bar_new();
+	Menu = gtk_menu_new();
+	init_file_menu();
+	Menu = gtk_menu_new();
+	init_edit_menu();
+	gtk_box_pack_start(GTK_BOX(MenuBox), MenuBar, FALSE, FALSE, 0);
+	gtk_table_attach_defaults(GTK_TABLE(Table), MenuBox, 0, 3, 0, 2);
+}
 void Handler::grid_previous()
 {
 	if (begin_index != 0)
@@ -55,10 +201,10 @@ void Handler::replace(GtkWidget* widget)
 	if (!fileValid)
 	{
 		notifications = gtk_message_dialog_new(GTK_WINDOW(window),
-			GTK_DIALOG_DESTROY_WITH_PARENT,
-			GTK_MESSAGE_ERROR,
-			GTK_BUTTONS_CLOSE,
-			"File extension must be a .tap file");
+				GTK_DIALOG_DESTROY_WITH_PARENT,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_CLOSE,
+				"File extension must be a .tap file");
 		gtk_dialog_run(GTK_DIALOG(notifications));
 		gtk_widget_destroy(notifications);	
 	}
@@ -71,20 +217,12 @@ void Handler::replace(GtkWidget* widget)
 		}
 	}
 }
-void call_replace(GtkWidget* widget, gpointer data)
-{
-	auto h = (Handler*) data;
-	h->replace(widget);
-}
+
 void Handler::inject(GtkWidget* widget)
 {
 
 }
-void call_injection(GtkWidget* widget, gpointer data)
-{
-	auto h = (Handler*) data;
-	h->inject(widget);
-}
+
 void Handler::init_previous_button()
 {
 	button_previous = gtk_button_new_with_label("previous");
@@ -98,27 +236,13 @@ void Handler::init_next_button()
 			this);
 	gtk_table_attach_defaults(GTK_TABLE(Table), button_next, 7,8, 6,7);
 }
-void Handler::init_button_replace()
-{
-	button_replace = gtk_button_new_with_label("replace");
-	g_signal_connect(G_OBJECT(button_replace), "clicked", G_CALLBACK(call_replace),
-			this);
-	gtk_table_attach_defaults(GTK_TABLE(Table), button_replace, 2, 8,  7, 8);
-}
-void Handler::init_button_injection()
-{
-	button_injection = gtk_button_new_with_label("inject");
-	g_signal_connect(G_OBJECT(button_injection), "clicked", G_CALLBACK(call_injection),
-			this);
-	gtk_table_attach_defaults(GTK_TABLE(Table), button_injection, 2,8, 8, 9);
-}
-void Handler::init_window(const char* dir_name)
+void Handler::init_window()
 {
 	gtk_init(0, NULL);
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_container_set_border_width(GTK_CONTAINER(window), 5);
 	gtk_window_set_default_size(GTK_WINDOW(window), 1400, 1400);
-	gtk_window_set_title(GTK_WINDOW(window), std::string(dir_name).append(std::string(" : FILE INFORMATIONS")).c_str());
+	gtk_window_set_title(GTK_WINDOW(window), "FILE INFORMATIONS");
 	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 
 	gtk_window_maximize(GTK_WINDOW(window));
@@ -132,15 +256,7 @@ void Handler::init_table()
 }
 std::string Handler::file_name(std::string filename)
 {
-	std::string res;
-	if (path_.find('/') == std::string::npos)
-	{
-		res= filename.substr(path_.length() + 1, filename.length());
-	}
-	else
-	{
-		res = filename.substr(path_.length(), filename.length());
-	}
+	std::string res= filename.substr(path_.length() + 1, filename.length());
 	return res;
 }
 void Handler::populate_grid()
@@ -158,10 +274,8 @@ void Handler::init_grid()
 {
 	grid_informations = gtk_list_store_new(NB_COLUMNS, 
 			G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING); 
-	
-	/* insert stocked value in the grid display */
-	populate_grid();
-	
+
+
 	/* create the grid view using the model as reference */
 	view_informations = gtk_tree_view_new_with_model(GTK_TREE_MODEL(grid_informations));
 	g_object_unref(grid_informations);
@@ -170,34 +284,34 @@ void Handler::init_grid()
 	column = gtk_tree_view_column_new_with_attributes("File number", gtk_cell_renderer_text_new(),
 			"text", FILE_NUMBER, NULL);
 	gtk_tree_view_column_set_expand(column, TRUE);
-	
+
 	/* add the column to the grid view */
 	gtk_tree_view_append_column(GTK_TREE_VIEW(view_informations), column);
 
 	column = gtk_tree_view_column_new_with_attributes("NAME", gtk_cell_renderer_text_new(),
 			"text", FILE_NAME, NULL);
-	
+
 	gtk_tree_view_column_set_expand(column, TRUE);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(view_informations), column);
 
 	column = gtk_tree_view_column_new_with_attributes("TOOL NAME", gtk_cell_renderer_text_new(),
 			"text", TOOL_NAME, NULL);
-	
+
 	gtk_tree_view_column_set_expand(column, TRUE);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(view_informations), column);
-	
+
 	column = gtk_tree_view_column_new_with_attributes("TIME", gtk_cell_renderer_text_new(),
 			"text", FILE_TIME, NULL);
 	gtk_tree_view_column_set_expand(column, TRUE);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(view_informations), column);
 
-	
+
 	column = gtk_tree_view_column_new_with_attributes("RUN TIME", gtk_cell_renderer_text_new(),
 			"text", RUN_TIME, NULL);
 	gtk_tree_view_column_set_expand(column, TRUE);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(view_informations), column);
 	gtk_widget_set_size_request(view_informations, 1000, 600);
-	
+
 	/* add the grid to the major window display */
 	gtk_table_attach_defaults(GTK_TABLE(Table), view_informations, 2,8, 2,5);
 }
@@ -438,7 +552,7 @@ void Handler::read_directory(const char* path)
 				}
 			}
 		}
-		else if (dir->d_type == DT_DIR && strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
+		else if (dir->d_type == DT_DIR && strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0 && work_on_sub_folder) {
 			char d_path[400];	
 			sprintf(d_path, "%s/%s", path, dir->d_name);
 			read_directory(d_path);
