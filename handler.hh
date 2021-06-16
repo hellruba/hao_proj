@@ -2,8 +2,10 @@
 #include <vector>
 #include "file_info.hh"
 #include "file_update.hh"
+#include "file_injection.hh"
 #include <stdbool.h>
 #include <gtk/gtk.h>
+
 class Handler {
 
 	public:
@@ -77,6 +79,7 @@ class Handler {
 		GtkListStore* grid_informations;
 		
 		FileUpdate* fileUpdate;
+		FileInjection* fileInjection;
 		int begin_index;
 		int end_index;
 		bool work_on_sub_folder = false;

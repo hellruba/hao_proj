@@ -11,6 +11,7 @@
 
 Handler::Handler(): begin_index(0), end_index(10) { 
 	fileUpdate = new FileUpdate();
+	fileInjection = new FileInjection();
 }
 
 void Handler::quit_window()
@@ -220,7 +221,19 @@ void Handler::replace(GtkWidget* widget)
 
 void Handler::inject(GtkWidget* widget)
 {
-
+	bool selected = fileInjection->run_dialog_injection_file_select();
+	if (selected)
+	{
+		bool isManual = fileInjection->manual_or_auto(window);
+		if (isManual)
+		{
+			fileInjection->inject_data_manually(window);
+		}
+		else
+		{
+			fileInjection->inject_data_automatically();
+		}
+	}	
 }
 
 void Handler::init_previous_button()
