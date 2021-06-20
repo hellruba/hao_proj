@@ -22,13 +22,15 @@ class FileInjection
 
 		bool run_dialog_injection_file_select();
 		bool inject_data_manually(GtkWidget* window);
-		bool inject_data_automatically();
+		bool inject_data_automatically(GtkWidget* window);
 		bool manual_or_auto(GtkWidget* window);
 		
 	private:
 		GtkWidget* dialog;
 		GtkWidget* entry;
 		GtkWidget* textZone;
+		GtkWidget* scrollbar;
+		GtkTextBuffer* buffer;
 		std::string filename;
 		std::string textToInject;
 		std::vector<std::pair<size_t, std::string>> injections;

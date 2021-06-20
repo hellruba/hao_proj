@@ -231,7 +231,7 @@ void Handler::inject(GtkWidget* widget)
 		}
 		else
 		{
-			fileInjection->inject_data_automatically();
+			fileInjection->inject_data_automatically(window);
 		}
 	}	
 }

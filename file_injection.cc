@@ -37,11 +37,11 @@ std::string FileInjection::getTextZone() const
 bool FileInjection::run_dialog_injection_file_select()
 {
 	bool fileSelected = true;
-  	dialog = gtk_file_chooser_dialog_new("Open a file", NULL,
-	GTK_FILE_CHOOSER_ACTION_OPEN,
-	GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-	GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
-	NULL);
+	dialog = gtk_file_chooser_dialog_new("Open a file", NULL,
+			GTK_FILE_CHOOSER_ACTION_OPEN,
+			GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+			GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
+			NULL);
 	switch (gtk_dialog_run(GTK_DIALOG(dialog)))
 	{
 		case GTK_RESPONSE_ACCEPT:
@@ -55,9 +55,92 @@ bool FileInjection::run_dialog_injection_file_select()
 	gtk_widget_destroy(dialog);
 	return fileSelected;
 }
-bool FileInjection::inject_data_automatically()
+bool FileInjection::inject_data_automatically(GtkWidget* window)
 {
+	dialog = gtk_dialog_new_with_buttons("Text to insert", GTK_WINDOW(window),
+			GTK_DIALOG_MODAL,
+			GTK_STOCK_OK, GTK_RESPONSE_OK,
+			GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+			NULL);
+	buffer = gtk_text_buffer_new(NULL);
+	textZone = gtk_text_view_new_with_buffer(buffer);
+	scrollbar = gtk_scrolled_window_new(NULL, NULL);
 
+	gtk_container_add(GTK_CONTAINER(scrollbar), textZone);
+	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), scrollbar, TRUE, TRUE, 5);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrollbar), GTK_POLICY_AUTOMATIC,
+		GTK_POLICY_AUTOMATIC);
+	bool inject = true;
+	gtk_widget_show_all(dialog);
+	switch(gtk_dialog_run(GTK_DIALOG(dialog)))
+	{
+		case GTK_RESPONSE_OK:
+			inject = true;
+			break;
+		case GTK_RESPONSE_CANCEL:
+		case GTK_RESPONSE_NONE:
+		default:
+			inject = false;
+			break;
+	}
+	gtk_widget_destroy(dialog);
+	if (inject)
+	{
+
+		GtkTextIter start;
+		GtkTextIter end;
+		gtk_text_buffer_get_start_iter(buffer, &start);
+		gtk_text_buffer_get_end_iter(buffer, &end);
+		auto txt = gtk_text_buffer_get_text(buffer, &start, &end, FALSE);
+	
+		size_t nblines = 0;
+		std::fstream read_file;
+		std::string line;
+		read_file.open(filename, std::ios::out | std::ios::in);
+		std::vector<std::string> stored_lines;
+		while (std::getline(read_file, line))
+		{
+			nblines += 1;
+			stored_lines.push_back(line);
+		}
+		read_file.close();
+		std::string lines = std::string("The text is ").append(std::string(""+nblines)).append(" long, every how many lines do you want to add the text?");
+		dialog = gtk_dialog_new_with_buttons(line.c_str(), GTK_WINDOW(window),
+				GTK_DIALOG_MODAL,
+				GTK_STOCK_OK, GTK_RESPONSE_OK,
+				GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+				NULL);
+		entry = gtk_entry_new();
+		gtk_entry_set_text(GTK_ENTRY(entry), "Enter every which number of line");
+		gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), entry, TRUE, FALSE, 0);
+		gtk_widget_show_all(dialog);
+		std::string xLines;
+		switch(gtk_dialog_run(GTK_DIALOG(dialog)))
+		{
+			case GTK_RESPONSE_OK:
+				xLines = std::string(gtk_entry_get_text(GTK_ENTRY(entry)));
+			case GTK_RESPONSE_CANCEL:
+			case GTK_RESPONSE_NONE:
+			default:
+				break;
+		}
+		gtk_widget_destroy(dialog);
+		size_t everyXlines = std::stoi(xLines);
+		std::fstream write_file;
+		std::string newline;
+		write_file.open(filename, std::ios::out | std::ios::in);
+		size_t i = 0;
+		while (i < nblines)
+		{
+			if (i % everyXlines == 0)
+			{
+				write_file << txt << std::endl;
+			}
+			write_file << stored_lines.at(i) << std::endl;
+			i++;
+		}
+		write_file.close();
+	}
 }
 bool FileInjection::inject_data_manually(GtkWidget* window)
 {
@@ -66,28 +149,51 @@ bool FileInjection::inject_data_manually(GtkWidget* window)
 			GTK_STOCK_OK, GTK_RESPONSE_OK,
 			GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
 			NULL);
-	textZone = gtk_text_view_new();
-	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), textZone, TRUE, FALSE, 0);
+	buffer = gtk_text_buffer_new(NULL);
+	textZone = gtk_text_view_new_with_buffer(buffer);
+	GtkTextIter end;
+	gtk_text_buffer_get_end_iter(buffer, &end);
+	std::fstream read_file;
+	std::string line;
+	read_file.open(filename, std::ios::out | std::ios::in);
+	while  (std::getline(read_file, line))
+	{
+		gtk_text_buffer_insert(GTK_TEXT_BUFFER(buffer), &end, line.c_str(), line.size());
+		gtk_text_buffer_get_end_iter(buffer, &end);
+	}
+	read_file.close();
+
+	scrollbar = gtk_scrolled_window_new(NULL, NULL);
+	gtk_container_add(GTK_CONTAINER(scrollbar), textZone);
+	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), scrollbar, TRUE, TRUE, 5);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrollbar), GTK_POLICY_AUTOMATIC,
+			GTK_POLICY_AUTOMATIC);
+
 	gtk_widget_show_all(dialog);
+	bool inject = true;
 	switch(gtk_dialog_run(GTK_DIALOG(dialog)))
 	{
 		case GTK_RESPONSE_OK:
+			inject = true;
+			break;
 		case GTK_RESPONSE_CANCEL:
 		case GTK_RESPONSE_NONE:
 		default:
+			inject = false;
 			break;
 	}
-	GtkTextIter start;
-	GtkTextIter end;
-	auto buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textZone));
-	gtk_text_buffer_get_start_iter(buffer, &start);
-	gtk_text_buffer_get_end_iter(buffer, &end);
-	auto t = gtk_text_buffer_get_text(buffer, &start, &end, FALSE);
-	std::cout << t << std::endl;
-	std::fstream file;
-	file.open("ttt", std::ios::out);
-	file << t;
-	file.close();
+	if (inject) {
+		GtkTextIter startBuffer;
+		GtkTextIter endBuffer;
+		gtk_text_buffer_get_start_iter(buffer, &startBuffer);
+		gtk_text_buffer_get_end_iter(buffer, &endBuffer);
+		auto txt = gtk_text_buffer_get_text(buffer, &startBuffer, &endBuffer, FALSE);
+		std::cout << std::string(txt) << std::endl;
+		std::fstream updateFile;
+		updateFile.open(filename, std::ios::out | std::ios::in);
+		updateFile << txt << std::endl;
+		updateFile.close();
+	}
 	gtk_widget_destroy(dialog);
 	return true;
 }
