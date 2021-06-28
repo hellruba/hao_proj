@@ -67,7 +67,8 @@ bool FileInjection::inject_data_automatically(GtkWidget* window)
 	scrollbar = gtk_scrolled_window_new(NULL, NULL);
 
 	gtk_container_add(GTK_CONTAINER(scrollbar), textZone);
-	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), scrollbar, TRUE, TRUE, 5);
+	auto dialogBox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+	gtk_box_pack_start(GTK_BOX(dialog), scrollbar, TRUE, TRUE, 5);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrollbar), GTK_POLICY_AUTOMATIC,
 		GTK_POLICY_AUTOMATIC);
 	bool inject = true;
@@ -104,15 +105,16 @@ bool FileInjection::inject_data_automatically(GtkWidget* window)
 			stored_lines.push_back(line);
 		}
 		read_file.close();
-		std::string lines = std::string("The text is ").append(std::string(""+nblines)).append(" long, every how many lines do you want to add the text?");
-		dialog = gtk_dialog_new_with_buttons(line.c_str(), GTK_WINDOW(window),
+		std::string lines = std::string("The text has ").append(std::to_string(nblines)).append(" lines, every how many lines do you want to add the text?");
+		dialog = gtk_dialog_new_with_buttons(lines.c_str(), GTK_WINDOW(window),
 				GTK_DIALOG_MODAL,
 				GTK_STOCK_OK, GTK_RESPONSE_OK,
 				GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
 				NULL);
 		entry = gtk_entry_new();
 		gtk_entry_set_text(GTK_ENTRY(entry), "Enter every which number of line");
-		gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), entry, TRUE, FALSE, 0);
+		auto dialogBox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+		gtk_box_pack_start(GTK_BOX(dialogBox), entry, TRUE, FALSE, 0);
 		gtk_widget_show_all(dialog);
 		std::string xLines;
 		switch(gtk_dialog_run(GTK_DIALOG(dialog)))
@@ -165,7 +167,8 @@ bool FileInjection::inject_data_manually(GtkWidget* window)
 
 	scrollbar = gtk_scrolled_window_new(NULL, NULL);
 	gtk_container_add(GTK_CONTAINER(scrollbar), textZone);
-	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), scrollbar, TRUE, TRUE, 5);
+	auto dialogBox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+	gtk_box_pack_start(GTK_BOX(dialogBox), scrollbar, TRUE, TRUE, 5);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrollbar), GTK_POLICY_AUTOMATIC,
 			GTK_POLICY_AUTOMATIC);
 

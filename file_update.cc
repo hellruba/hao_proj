@@ -90,7 +90,8 @@ bool FileUpdate::run_dialog_values(GtkWidget* window)
 		{
 			gtk_entry_set_text(GTK_ENTRY(entry), "Enter end of file name text");
 		}
-		gtk_box_pack_start(GTK_BOX(GTK_DIALOG(values_dialog)->vbox),
+		auto dialogBox = gtk_dialog_get_content_area(GTK_DIALOG(values_dialog));
+		gtk_box_pack_start(GTK_BOX(dialogBox),
 				entry, TRUE, FALSE, 0);
 		gtk_widget_show_all(values_dialog);
 		switch (gtk_dialog_run(GTK_DIALOG(values_dialog)))

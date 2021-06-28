@@ -157,7 +157,7 @@ void Handler::init_menu()
 	Menu = gtk_menu_new();
 	init_edit_menu();
 	gtk_box_pack_start(GTK_BOX(MenuBox), MenuBar, FALSE, FALSE, 0);
-	gtk_table_attach_defaults(GTK_TABLE(Table), MenuBox, 0, 3, 0, 2);
+	gtk_table_attach_defaults(GTK_TABLE(Table), MenuBox, 0, 10, 0, 2);
 }
 void Handler::grid_previous()
 {
@@ -254,10 +254,11 @@ void Handler::init_window()
 	gtk_init(0, NULL);
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_container_set_border_width(GTK_CONTAINER(window), 5);
-	gtk_window_set_default_size(GTK_WINDOW(window), 1400, 1400);
+	gtk_window_set_default_size(GTK_WINDOW(window), 800, 800);
 	gtk_window_set_title(GTK_WINDOW(window), "FILE INFORMATIONS");
-	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER_ALWAYS);
 
+	gtk_window_fullscreen(GTK_WINDOW(window));
 	gtk_window_maximize(GTK_WINDOW(window));
 	gtk_window_set_gravity(GTK_WINDOW(window), GDK_GRAVITY_CENTER);
 	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
@@ -323,7 +324,6 @@ void Handler::init_grid()
 			"text", RUN_TIME, NULL);
 	gtk_tree_view_column_set_expand(column, TRUE);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(view_informations), column);
-	gtk_widget_set_size_request(view_informations, 1000, 600);
 
 	/* add the grid to the major window display */
 	gtk_table_attach_defaults(GTK_TABLE(Table), view_informations, 2,8, 2,5);
